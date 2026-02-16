@@ -1,0 +1,42 @@
+[project]
+name = "reaper-mcp"
+version = "0.1.0"
+description = "MCP server for REAPER"
+authors = [
+    {name = "Aaron Mamparo", email = "aaronmamparo@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12,<4.0"
+dependencies = ["mcp (>=1.26.0,<2.0.0)", "injector (>=0.24.0,<0.25.0)", "python-reapy (>=0.10.0)"]
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.0"
+pytest = "^8.0"
+ruff = "^0.8"
+anyio = "^4.12.1"
+pytest-anyio = "^0.0.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[project.scripts]
+reaper-mcp = "reaper_mcp.__main__:main"
+
+[[tool.poetry.packages]]
+include = "reaper_mcp"
+from = "src"
