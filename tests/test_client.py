@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from reaper_mcp.client import ReapyClient
@@ -102,3 +104,96 @@ class TestReapyClient:
         client._commands["test_cmd"] = no_args_handler
         client.send_command("test_cmd", None)
         assert called[0]
+
+
+class TestAutoConfiguration:
+    def test_connection_error_triggers_auto_configure(self):
+        client = ReapyClient()
+
+        def handler():
+            raise ConnectionRefusedError("Connection refused")
+
+        client._commands["test_cmd"] = handler
+
+        with patch.object(client, "_try_auto_configure", return_value=True):
+            with pytest.raises(RuntimeError, match="auto-configured"):
+                client.send_command("test_cmd")
+
+    def test_auto_configure_success_message(self):
+        client = ReapyClient()
+
+        def handler():
+            raise OSError("Connection refused")
+
+        client._commands["test_cmd"] = handler
+
+        with patch.object(client, "_try_auto_configure", return_value=True):
+            with pytest.raises(RuntimeError, match="restart REAPER"):
+                client.send_command("test_cmd")
+
+    def test_auto_configure_failure_message(self):
+        client = ReapyClient()
+
+        def handler():
+            raise OSError("Connection refused")
+
+        client._commands["test_cmd"] = handler
+
+        with patch.object(client, "_try_auto_configure", return_value=False):
+            with pytest.raises(RuntimeError, match="auto-configuration failed"):
+                client.send_command("test_cmd")
+
+    def test_auto_configure_only_attempted_once(self):
+        client = ReapyClient()
+        call_count = 0
+
+        def handler():
+            raise OSError("Connection refused")
+
+        def counting_configure():
+            nonlocal call_count
+            call_count += 1
+            client._auto_configured = True
+            return True
+
+        client._commands["test_cmd"] = handler
+
+        with patch.object(
+            client, "_try_auto_configure", side_effect=counting_configure
+        ):
+            with pytest.raises(RuntimeError):
+                client.send_command("test_cmd")
+            # Second call should not trigger auto-configure
+            with pytest.raises(RuntimeError, match="Connection refused"):
+                client.send_command("test_cmd")
+
+        assert call_count == 1
+
+    def test_non_connection_error_skips_auto_configure(self):
+        client = ReapyClient()
+
+        def handler():
+            raise ValueError("bad argument")
+
+        client._commands["test_cmd"] = handler
+
+        with patch.object(client, "_try_auto_configure") as mock_configure:
+            with pytest.raises(RuntimeError, match="bad argument"):
+                client.send_command("test_cmd")
+            mock_configure.assert_not_called()
+
+    def test_is_connection_error_detects_oserror(self):
+        assert ReapyClient._is_connection_error(OSError("fail"))
+        assert ReapyClient._is_connection_error(ConnectionRefusedError("fail"))
+
+    def test_is_connection_error_detects_reapy_errors(self):
+        # Simulate reapy exception classes without importing reapy
+        exc = type("DisabledDistAPIError", (Exception,), {})("no api")
+        assert ReapyClient._is_connection_error(exc)
+
+        exc = type("DisconnectedClientError", (Exception,), {})("disconnected")
+        assert ReapyClient._is_connection_error(exc)
+
+    def test_is_connection_error_rejects_other_exceptions(self):
+        assert not ReapyClient._is_connection_error(ValueError("bad"))
+        assert not ReapyClient._is_connection_error(TypeError("wrong"))

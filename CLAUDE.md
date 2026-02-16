@@ -28,7 +28,7 @@ This is an MCP (Model Context Protocol) server for REAPER, built with FastMCP.
 
 **Testing pattern:** Tests use `@pytest.mark.anyio` for async. Call tools directly via `mcp.call_tool(name, args)` which returns `(content_list, raw_result)`. Pass a custom `Injector` to `create_server()` with `FakeReaperClient` (see `tests/conftest.py`).
 
-**reapy setup:** One-time: `python -c "import reapy; reapy.configure_reaper()"` then restart REAPER. The `ReapyClient` uses `reapy.reascript_api` (lazily imported) to call REAPER's API functions directly.
+**reapy setup:** `ReapyClient` auto-runs `reapy.configure_reaper()` on first connection failure, then asks the user to restart REAPER. Manual setup is a fallback. The client uses `reapy.reascript_api` (lazily imported) to call REAPER's API functions directly.
 
 ## Code Style
 

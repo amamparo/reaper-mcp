@@ -21,15 +21,13 @@ class ReaperClient(ABC):
 class ReapyClient(ReaperClient):
     """Controls REAPER directly via the reapy library.
 
-    Requires one-time setup::
-
-        python -c "import reapy; reapy.configure_reaper()"
-
-    then restart REAPER.
+    On first connection failure, automatically runs
+    ``reapy.configure_reaper()`` and asks the user to restart REAPER.
     """
 
     def __init__(self) -> None:
         self._api_module: Any = None
+        self._auto_configured = False
         self._commands: dict[str, Any] = {
             "get_project_info": self._get_project_info,
             "get_track_info": self._get_track_info,
@@ -87,7 +85,39 @@ class ReapyClient(ReaperClient):
         except RuntimeError:
             raise
         except Exception as e:
+            if not self._auto_configured and self._is_connection_error(e):
+                configured = self._try_auto_configure()
+                if configured:
+                    raise RuntimeError(
+                        "Could not connect to REAPER. reapy has been "
+                        "auto-configured — please restart REAPER and "
+                        "try again."
+                    ) from e
+                raise RuntimeError(
+                    "Could not connect to REAPER and auto-configuration "
+                    'failed. Please run: python -c "import reapy; '
+                    'reapy.configure_reaper()" then restart REAPER.'
+                ) from e
             raise RuntimeError(str(e)) from e
+
+    @staticmethod
+    def _is_connection_error(exc: Exception) -> bool:
+        if isinstance(exc, OSError):
+            return True
+        name = type(exc).__name__
+        return name in ("DisabledDistAPIError", "DisconnectedClientError")
+
+    def _try_auto_configure(self) -> bool:
+        """Attempt reapy.configure_reaper(). Returns True on success."""
+        self._auto_configured = True
+        self._api_module = None
+        try:
+            import reapy
+
+            reapy.configure_reaper()
+            return True
+        except Exception:
+            return False
 
     # ── Helpers ───────────────────────────────────────────────────────
 

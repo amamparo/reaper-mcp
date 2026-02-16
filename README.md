@@ -11,14 +11,16 @@ MCP server for controlling REAPER — enabling AI assistants to interact with RE
 
 ### 1. Enable reapy
 
-The MCP server uses [python-reapy](https://github.com/RomeoDespres/reapy) to communicate with REAPER. A one-time configuration step is required:
+The MCP server uses [python-reapy](https://github.com/RomeoDespres/reapy) to communicate with REAPER. On the first connection attempt, the server will automatically run `reapy.configure_reaper()` if needed. After that, **restart REAPER once** for the changes to take effect.
+
+If auto-configuration fails (e.g. REAPER's resource path can't be found), you can run it manually:
 
 ```bash
 pip install python-reapy
 python -c "import reapy; reapy.configure_reaper()"
 ```
 
-Then restart REAPER. This enables reapy's dist API inside REAPER so external Python processes can control it.
+Then restart REAPER.
 
 ### 2. Configure Your MCP Client
 
